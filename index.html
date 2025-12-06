@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>匕首心 领域/职业测验</title>
+<title>匕首心 领域/职业测试</title>
 <style>
   :root{--bg:#0b1020;--panel:rgba(255,255,255,0.04);--muted:rgba(255,255,255,0.75);--accent:#6366F1;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#e6eef8;background:linear-gradient(180deg,#0b1020 0%,#0f1724 60%,#000 100%);min-height:100vh;padding:28px;}
@@ -28,7 +28,7 @@
 </head>
 <body>
   <div class="container" id="app">
-    <h1>匕首心领域/职业测验</h1>
+    <h1>匕首心Daggerheart 领域/职业测试</h1>
     <p class="lead">回答每题 A 或 B，点击“提交并计算结果”查看推荐。结果仅供角色创建时进行参考。</p>
 
     <form id="quizForm"></form>
@@ -40,7 +40,7 @@
 
     <div id="resultArea"></div>
 
-    <footer>提示：这是一个纯前端文件，可直接在浏览器打开并运行。</footer>
+    <footer> 作者：PolearmMaster丨匕首心规则交流群：791858682、583981590 </footer>
   </div>
 
 <script>
@@ -285,7 +285,7 @@ function renderResult(res) {
   const wrap = document.createElement('div');
   wrap.className = 'result';
 
-  const h2 = document.createElement('h2'); h2.textContent = '测验结果'; h2.style.marginTop='0';
+  const h2 = document.createElement('h2'); h2.textContent = '测试结果'; h2.style.marginTop='0';
   wrap.appendChild(h2);
 
   const best = document.createElement('div');
@@ -407,4 +407,5 @@ document.querySelectorAll('label.choice').forEach(label=>{
 
 </script>
 </body>
+
 </html>
