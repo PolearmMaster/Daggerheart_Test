@@ -49,6 +49,11 @@
     border-radius:10px;
     margin-bottom:12px;
     background:rgba(255,255,255,0.02);
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+  }
+  fieldset.answered {
+    border-color: rgba(99,102,241,0.3);
+    background: rgba(99,102,241,0.03);
   }
   legend{
     font-weight:600;
@@ -57,6 +62,10 @@
     padding:0 8px;
     background:var(--panel);
     width:auto;
+    transition: color 0.3s ease;
+  }
+  fieldset.answered legend {
+    color: var(--accent);
   }
   
   /* 选项样式 - 每行一个 */
@@ -200,6 +209,55 @@
     border-radius:4px;
     background:rgba(255,255,255,0.05);
     border:1px solid rgba(255,255,255,0.1);
+  }
+  
+  /* 优先级标签 */
+  .priority-tag {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-right: 8px;
+    font-weight: 600;
+  }
+  .priority-1 { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+  .priority-2 { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+  .priority-3 { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+  .priority-4 { background: rgba(99, 102, 241, 0.2); color: #6366F1; }
+  .priority-5 { background: rgba(99, 102, 241, 0.15); color: rgba(99, 102, 241, 0.8); }
+  .priority-6 { background: rgba(99, 102, 241, 0.1); color: rgba(99, 102, 241, 0.6); }
+  
+  /* 未回答问题列表 */
+  .unanswered-list {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+  }
+  .unanswered-list h4 {
+    color: #ef4444;
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .unanswered-list ul {
+    margin: 0;
+    padding-left: 20px;
+    color: rgba(255,255,255,0.8);
+  }
+  .unanswered-list li {
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+  .unanswered-list a {
+    color: #818cf8;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .unanswered-list a:hover {
+    text-decoration: underline;
   }
   
   @media (max-width:600px){
@@ -618,7 +676,7 @@ const classes = {
     primary: "贤者"
   },
   "守护者 GUARDIAN": {
-    description: "守护者之名涵盖诸多武术职业，其本质更在于坚定不移的道德准则与磐石般的意志，而非具体战斗方式。虽然许多守护者会为了国家或事业加入军事组织，但他们更倾向于追随少数他们真正关心的人，而不是盲从大多数的意志。即便面对压倒性劣势，守护者仍会以惊人凶悍之势作战，将守护同伴视为至高使命。那些伤害守护者盟友的人将自食恶果——因为守护者必将以牙还牙，以血还血。",
+    description: "守护者之名涵盖诸多武术职业，其本质更在于坚定不移的道德准则与磐石般的意志，而非具体战斗方式。虽然许多守护者会为了国家或事业加入军事组织，但他们更倾向于追随少数他们真正关心的人，而不是盲从大多数的意志。即便面对压倒性劣势，守护者仍会以惊人凶悍之势作战，将守护同伴视为至高使命。那些伤害守护者盟友的人将自食其果——因为守护者必将以牙还牙，以血还血。",
     domains: ["勇气","利刃"],
     primary: "勇气"
   },
@@ -686,10 +744,49 @@ const form = document.getElementById('quizForm');
 const answers = {};
 const totalQuestions = questions.length;
 
+// 存储问题元素引用，便于后续高亮
+const questionElements = {};
+
 function updateAnsweredCount() {
   const answered = Object.keys(answers).length;
   document.getElementById('answeredCount').textContent = answered;
   document.getElementById('totalQuestions').textContent = totalQuestions;
+}
+
+// 更新问题高亮状态
+function updateQuestionHighlight(qid) {
+  const fieldset = questionElements[qid];
+  if (fieldset) {
+    if (answers[qid]) {
+      fieldset.classList.add('answered');
+    } else {
+      fieldset.classList.remove('answered');
+    }
+  }
+}
+
+// 获取未回答的问题列表
+function getUnansweredQuestions() {
+  const unanswered = [];
+  for (let i = 1; i <= totalQuestions; i++) {
+    if (!answers[i]) {
+      unanswered.push(i);
+    }
+  }
+  return unanswered;
+}
+
+// 跳转到指定问题
+function scrollToQuestion(qid) {
+  const fieldset = questionElements[qid];
+  if (fieldset) {
+    fieldset.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // 添加短暂的闪烁效果
+    fieldset.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.5)';
+    setTimeout(() => {
+      fieldset.style.boxShadow = '';
+    }, 1000);
+  }
 }
 
 // 创建带颜色的领域标签（仅用于结果页面）
@@ -700,6 +797,7 @@ function createColoredDomainName(domain) {
 
 function makeChoiceElement(q) {
   const fs = document.createElement('fieldset');
+  fs.id = `question-${q.id}`;
   const legend = document.createElement('legend');
   legend.innerHTML = q.q + ' <span class="question-counter">' + q.id + '/' + totalQuestions + '</span>';
   fs.appendChild(legend);
@@ -721,6 +819,7 @@ function makeChoiceElement(q) {
     input.addEventListener('change', () => {
       answers[q.id] = choiceLetter;
       updateSelectionStyles(fs, q.id);
+      updateQuestionHighlight(q.id);
       updateAnsweredCount();
     });
 
@@ -743,6 +842,13 @@ function makeChoiceElement(q) {
   });
 
   fs.appendChild(container);
+  
+  // 存储问题元素引用
+  questionElements[q.id] = fs;
+  
+  // 初始高亮状态
+  updateQuestionHighlight(q.id);
+  
   return fs;
 }
 
@@ -797,7 +903,7 @@ function calculate() {
     });
     const avgScore = score / classData.domains.length; // 计算平均分
     
-    // 新增：主要领域匹配度加分
+    // 主要领域匹配度加分
     let bonus = 0;
     if (classData.primary === topDomain) {
       bonus = 5; // 主要领域与最适合领域匹配，大幅加分
@@ -828,21 +934,50 @@ function renderResult(res) {
   if(!res) return;
   
   const answeredCount = Object.keys(answers).length;
+  const unansweredQuestions = getUnansweredQuestions();
+  
   if (answeredCount < totalQuestions) {
     const warning = document.createElement('div');
     warning.className = 'result';
+    
+    // 构建未回答问题列表HTML
+    let unansweredListHTML = '';
+    if (unansweredQuestions.length > 0) {
+      unansweredListHTML = `
+        <div class="unanswered-list">
+          <h4>⚠️ 以下题目未回答：</h4>
+          <ul>
+            ${unansweredQuestions.map(qid => 
+              `<li>第 ${qid} 题：<a onclick="scrollToQuestion(${qid})" title="点击跳转到该题">${questions.find(q => q.id === qid).q.substring(0, 40)}...</a></li>`
+            ).join('')}
+          </ul>
+        </div>
+      `;
+    }
+    
     warning.innerHTML = `
       <div style="color: var(--splendor); margin-bottom: 12px;">
         ⚠️ 你只回答了 ${answeredCount}/${totalQuestions} 个问题
       </div>
       <p>建议完成所有问题以获得更准确的结果。是否继续查看当前结果？</p>
-      <button id="continueBtn" class="btn primary" style="margin-top: 12px;">继续查看结果</button>
+      ${unansweredListHTML}
+      <div style="margin-top: 16px;">
+        <button id="continueBtn" class="btn primary" style="margin-right: 10px;">继续查看结果</button>
+        <button id="jumpToUnansweredBtn" class="btn ghost" ${unansweredQuestions.length === 0 ? 'disabled style="opacity:0.5"' : ''}>跳转到未回答题目</button>
+      </div>
     `;
     resultArea.appendChild(warning);
     
     document.getElementById('continueBtn').addEventListener('click', () => {
       renderFullResult(res);
     });
+    
+    // 跳转到第一个未回答的题目
+    if (unansweredQuestions.length > 0) {
+      document.getElementById('jumpToUnansweredBtn').addEventListener('click', () => {
+        scrollToQuestion(unansweredQuestions[0]);
+      });
+    }
   } else {
     renderFullResult(res);
   }
@@ -900,7 +1035,7 @@ function renderFullResult(res) {
   others.appendChild(ul);
   wrap.appendChild(others);
 
-  // 职业推荐部分（修改：按照新的优先级排序）
+  // 职业推荐部分 - 新的六优先级排序系统
   const classRecommendation = document.createElement('div');
   classRecommendation.innerHTML = '<h3 style="margin-top:18px">职业推荐：</h3>';
   
@@ -910,94 +1045,130 @@ function renderFullResult(res) {
   // 获取所有职业并按新优先级排序
   const allClasses = res.rankedClasses.map(c => c);
   
-  // 查找由第一名+第二名或第一名+第三名组成的职业
-  const firstPriorityClasses = [];
-  const secondPriorityClasses = [];
-  const thirdPriorityClasses = [];
+  // 新的六优先级分组系统
+  const priorityGroups = [[], [], [], [], [], []]; // 6个优先级组
   
   allClasses.forEach(classInfo => {
     const classDomains = classInfo.data.domains;
+    const classPrimary = classInfo.data.primary;
     
-    // 检查是否是第一名领域 + 第二名领域组成的职业
-    const isTopSecondCombo = classDomains.includes(topDomain) && 
-                             classDomains.includes(secondDomain) && 
-                             classDomains.length === 2;
-    
-    // 检查是否是第一名领域 + 第三名领域组成的职业
-    const isTopThirdCombo = classDomains.includes(topDomain) && 
-                            classDomains.includes(thirdDomain) && 
-                            classDomains.length === 2;
-    
-    if (isTopSecondCombo || isTopThirdCombo) {
-      firstPriorityClasses.push(classInfo);
-    } 
-    // 检查主要领域是否为第一名领域
-    else if (classInfo.data.primary === topDomain) {
-      secondPriorityClasses.push(classInfo);
-    } 
-    // 其他职业
-    else {
-      thirdPriorityClasses.push(classInfo);
+    // 检查优先级1：得分第一的领域+得分第二的领域构成的职业
+    if (classDomains.length === 2 && 
+        classDomains.includes(topDomain) && 
+        classDomains.includes(secondDomain)) {
+      priorityGroups[0].push(classInfo);
     }
+    // 检查优先级2：得分第一的领域+得分第三的领域构成的职业
+    else if (classDomains.length === 2 && 
+             classDomains.includes(topDomain) && 
+             classDomains.includes(thirdDomain)) {
+      priorityGroups[1].push(classInfo);
+    }
+    // 检查优先级3：得分第二的领域+得分第三的领域构成的职业
+    else if (classDomains.length === 2 && 
+             classDomains.includes(secondDomain) && 
+             classDomains.includes(thirdDomain)) {
+      priorityGroups[2].push(classInfo);
+    }
+    // 检查优先级4：以得分第一的领域为主要领域的职业
+    else if (classPrimary === topDomain) {
+      priorityGroups[3].push(classInfo);
+    }
+    // 检查优先级5：以得分第二的领域为主要领域的职业
+    else if (classPrimary === secondDomain) {
+      priorityGroups[4].push(classInfo);
+    }
+    // 检查优先级6：以得分第三的领域为主要领域的职业
+    else if (classPrimary === thirdDomain) {
+      priorityGroups[5].push(classInfo);
+    }
+    // 其他职业（不属于任何优先级）不显示在推荐中
   });
   
-  // 合并排序后的职业列表
-  const sortedClasses = [
-    ...firstPriorityClasses.sort((a, b) => b.score - a.score),
-    ...secondPriorityClasses.sort((a, b) => b.score - a.score),
-    ...thirdPriorityClasses.sort((a, b) => b.score - a.score)
-  ];
+  // 在每个优先级组内部按照最终得分排序
+  priorityGroups.forEach(group => {
+    group.sort((a, b) => b.score - a.score);
+  });
   
-  // 取前三个职业
-  const topThreeClasses = sortedClasses.slice(0, 3);
-  
-  // 添加特殊标记说明
-  if (firstPriorityClasses.length > 0 && firstPriorityClasses[0]) {
-    const comboNote = document.createElement('div');
-    comboNote.style.color = 'var(--accent)';
-    comboNote.style.fontSize = '14px';
-    comboNote.style.marginBottom = '12px';
-    comboNote.innerHTML = '✨ <strong>特别推荐</strong>：此职业完美匹配你的两个高适合领域！';
-    classRecommendation.appendChild(comboNote);
+  // 合并所有优先级组，按顺序取前3个职业
+  const sortedClasses = [];
+  for (let i = 0; i < priorityGroups.length; i++) {
+    if (sortedClasses.length >= 3) break;
+    
+    // 为组内每个职业添加优先级标签
+    priorityGroups[i].forEach(classInfo => {
+      if (sortedClasses.length < 3) {
+        classInfo.priorityLevel = i + 1;
+        sortedClasses.push(classInfo);
+      }
+    });
   }
   
-  topThreeClasses.forEach((classInfo, index) => {
+  // 添加优先级标签说明
+  if (sortedClasses.length > 0) {
+    const priorityNote = document.createElement('div');
+    priorityNote.style.color = 'var(--accent)';
+    priorityNote.style.fontSize = '14px';
+    priorityNote.style.marginBottom = '12px';
+    priorityNote.innerHTML = '💡 职业按照与你的领域匹配度从高到低排序。';
+    classRecommendation.appendChild(priorityNote);
+  }
+  
+  // 显示前三个职业
+  sortedClasses.forEach((classInfo, index) => {
     const card = document.createElement('div');
     card.className = 'card';
     
-    // 如果是第一名+第二名/第三名组成的职业，添加特殊边框
-    const classDomains = classInfo.data.domains;
-    const isTopSecondCombo = classDomains.includes(topDomain) && 
-                             classDomains.includes(secondDomain) && 
-                             classDomains.length === 2;
-    const isTopThirdCombo = classDomains.includes(topDomain) && 
-                            classDomains.includes(thirdDomain) && 
-                            classDomains.length === 2;
+    // 根据优先级设置不同的样式
+    let priorityLabel = '';
+    let borderStyle = '';
+    let titleColor = '';
     
-    if (isTopSecondCombo || isTopThirdCombo) {
-      card.style.border = '2px solid var(--accent)';
-      card.style.boxShadow = '0 0 10px rgba(99,102,241,0.3)';
-    } else if (classInfo.data.primary === topDomain) {
-      card.style.border = '1px solid rgba(99,102,241,0.5)';
+    switch(classInfo.priorityLevel) {
+      case 1:
+        priorityLabel = `<span class="priority-tag priority-1">${topDomain} + ${secondDomain}</span>`;
+        borderStyle = '2px solid #10b981';
+        titleColor = '#10b981';
+        break;
+      case 2:
+        priorityLabel = `<span class="priority-tag priority-2">${topDomain} + ${thirdDomain}</span>`;
+        borderStyle = '2px solid #3b82f6';
+        titleColor = '#3b82f6';
+        break;
+      case 3:
+        priorityLabel = `<span class="priority-tag priority-3">${secondDomain} + ${thirdDomain}</span>`;
+        borderStyle = '2px solid #8b5cf6';
+        titleColor = '#8b5cf6';
+        break;
+      case 4:
+        priorityLabel = `<span class="priority-tag priority-4">主要领域: ${topDomain}</span>`;
+        borderStyle = '1px solid rgba(99,102,241,0.7)';
+        titleColor = 'rgba(99,102,241,0.9)';
+        break;
+      case 5:
+        priorityLabel = `<span class="priority-tag priority-5">主要领域: ${secondDomain}</span>`;
+        borderStyle = '1px solid rgba(99,102,241,0.4)';
+        titleColor = 'rgba(99,102,241,0.7)';
+        break;
+      case 6:
+        priorityLabel = `<span class="priority-tag priority-6">主要领域: ${thirdDomain}</span>`;
+        borderStyle = '1px solid rgba(99,102,241,0.3)';
+        titleColor = 'rgba(99,102,241,0.5)';
+        break;
     }
     
-    // 添加组合标签
-    let comboTag = '';
-    if (isTopSecondCombo) {
-      comboTag = `<div style="color: var(--accent); font-size: 12px; margin-bottom: 6px;">🎯 完美匹配：${topDomain} + ${secondDomain}</div>`;
-    } else if (isTopThirdCombo) {
-      comboTag = `<div style="color: var(--accent); font-size: 12px; margin-bottom: 6px;">🎯 完美匹配：${topDomain} + ${thirdDomain}</div>`;
-    } else if (classInfo.data.primary === topDomain) {
-      comboTag = `<div style="color: rgba(99,102,241,0.8); font-size: 12px; margin-bottom: 6px;">⭐ 主要领域匹配：${topDomain}</div>`;
-    }
+    card.style.border = borderStyle;
+    card.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
     
     card.innerHTML = `
-      ${comboTag}
+      <div style="display:flex;align-items:center;margin-bottom:8px;">
+        ${priorityLabel}
+      </div>
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <strong style="${(isTopSecondCombo || isTopThirdCombo) ? 'color:var(--accent)' : (classInfo.data.primary === topDomain ? 'color:rgba(99,102,241,0.9)' : '')}">${classInfo.name}</strong>
+        <strong style="color: ${titleColor}">${classInfo.name}</strong>
       </div>
       <div style="margin-top:8px;color:rgba(255,255,255,0.85)">${classInfo.data.description}</div>
-      <div style="margin-top:8px">
+      <div style="margin-top:8px; font-size: 13px;">
         关联领域：${classInfo.data.domains.map(d => createColoredDomainName(d)).join(' ')}
       </div>
     `;
@@ -1051,6 +1222,12 @@ document.getElementById('resetBtn').addEventListener('click', (e)=>{
   for(const k in answers) delete answers[k];
   const labels = document.querySelectorAll('label.choice');
   labels.forEach(l=>l.classList.remove('selected'));
+  
+  // 清除所有问题高亮
+  Object.keys(questionElements).forEach(qid => {
+    updateQuestionHighlight(qid);
+  });
+  
   resultArea.innerHTML = '';
   updateAnsweredCount();
   window.scrollTo({top:0,behavior:'smooth'});
