@@ -783,10 +783,12 @@ function calculate() {
 
   const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({domain:k,score:v}));
   
-  // 计算职业匹配度（新增：主要领域优先逻辑）
+  // 获取前三名领域
   const topDomain = ranked[0]?.domain;
   const secondDomain = ranked[1]?.domain;
+  const thirdDomain = ranked[2]?.domain;
   
+  // 计算职业匹配度
   const classScores = {};
   Object.entries(classes).forEach(([className, classData]) => {
     let score = 0;
@@ -816,7 +818,7 @@ function calculate() {
       rank: index + 1
     }));
 
-  return { scores, ranked, rankedClasses };
+  return { scores, ranked, rankedClasses, topDomain, secondDomain, thirdDomain };
 }
 
 /* render result */
@@ -851,9 +853,11 @@ function renderFullResult(res) {
   const top = res.ranked[0];
   const second = res.ranked[1];
   const third = res.ranked[2];
-  const topClass = res.rankedClasses[0];
-  const secondClass = res.rankedClasses[1];
-  const thirdClass = res.rankedClasses[2];
+  
+  // 获取前三名领域
+  const topDomain = res.topDomain;
+  const secondDomain = res.secondDomain;
+  const thirdDomain = res.thirdDomain;
 
   const wrap = document.createElement('div');
   wrap.className = 'result';
@@ -896,41 +900,101 @@ function renderFullResult(res) {
   others.appendChild(ul);
   wrap.appendChild(others);
 
-  // 职业推荐部分（修改：去掉匹配度显示，优化排序逻辑）
+  // 职业推荐部分（修改：按照新的优先级排序）
   const classRecommendation = document.createElement('div');
   classRecommendation.innerHTML = '<h3 style="margin-top:18px">职业推荐：</h3>';
   
   const classGrid = document.createElement('div');
   classGrid.className = 'grid';
   
-  // 获取最适合领域
-  const bestDomain = top ? top.domain : '';
+  // 获取所有职业并按新优先级排序
+  const allClasses = res.rankedClasses.map(c => c);
   
-  // 重新排序职业：将主要领域与最适合领域匹配的职业放在前面
-  const sortedClasses = [...res.rankedClasses].sort((a, b) => {
-    // 主要领域与最适合领域匹配的排最前
-    if (a.data.primary === bestDomain && b.data.primary !== bestDomain) return -1;
-    if (a.data.primary !== bestDomain && b.data.primary === bestDomain) return 1;
+  // 查找由第一名+第二名或第一名+第三名组成的职业
+  const firstPriorityClasses = [];
+  const secondPriorityClasses = [];
+  const thirdPriorityClasses = [];
+  
+  allClasses.forEach(classInfo => {
+    const classDomains = classInfo.data.domains;
     
-    // 其次按得分排序
-    return b.score - a.score;
+    // 检查是否是第一名领域 + 第二名领域组成的职业
+    const isTopSecondCombo = classDomains.includes(topDomain) && 
+                             classDomains.includes(secondDomain) && 
+                             classDomains.length === 2;
+    
+    // 检查是否是第一名领域 + 第三名领域组成的职业
+    const isTopThirdCombo = classDomains.includes(topDomain) && 
+                            classDomains.includes(thirdDomain) && 
+                            classDomains.length === 2;
+    
+    if (isTopSecondCombo || isTopThirdCombo) {
+      firstPriorityClasses.push(classInfo);
+    } 
+    // 检查主要领域是否为第一名领域
+    else if (classInfo.data.primary === topDomain) {
+      secondPriorityClasses.push(classInfo);
+    } 
+    // 其他职业
+    else {
+      thirdPriorityClasses.push(classInfo);
+    }
   });
+  
+  // 合并排序后的职业列表
+  const sortedClasses = [
+    ...firstPriorityClasses.sort((a, b) => b.score - a.score),
+    ...secondPriorityClasses.sort((a, b) => b.score - a.score),
+    ...thirdPriorityClasses.sort((a, b) => b.score - a.score)
+  ];
   
   // 取前三个职业
   const topThreeClasses = sortedClasses.slice(0, 3);
+  
+  // 添加特殊标记说明
+  if (firstPriorityClasses.length > 0 && firstPriorityClasses[0]) {
+    const comboNote = document.createElement('div');
+    comboNote.style.color = 'var(--accent)';
+    comboNote.style.fontSize = '14px';
+    comboNote.style.marginBottom = '12px';
+    comboNote.innerHTML = '✨ <strong>特别推荐</strong>：此职业完美匹配你的两个高适合领域！';
+    classRecommendation.appendChild(comboNote);
+  }
   
   topThreeClasses.forEach((classInfo, index) => {
     const card = document.createElement('div');
     card.className = 'card';
     
-    // 如果主要领域与最适合领域匹配，添加特殊边框
-    if (classInfo.data.primary === bestDomain) {
+    // 如果是第一名+第二名/第三名组成的职业，添加特殊边框
+    const classDomains = classInfo.data.domains;
+    const isTopSecondCombo = classDomains.includes(topDomain) && 
+                             classDomains.includes(secondDomain) && 
+                             classDomains.length === 2;
+    const isTopThirdCombo = classDomains.includes(topDomain) && 
+                            classDomains.includes(thirdDomain) && 
+                            classDomains.length === 2;
+    
+    if (isTopSecondCombo || isTopThirdCombo) {
+      card.style.border = '2px solid var(--accent)';
+      card.style.boxShadow = '0 0 10px rgba(99,102,241,0.3)';
+    } else if (classInfo.data.primary === topDomain) {
       card.style.border = '1px solid rgba(99,102,241,0.5)';
     }
     
+    // 添加组合标签
+    let comboTag = '';
+    if (isTopSecondCombo) {
+      comboTag = `<div style="color: var(--accent); font-size: 12px; margin-bottom: 6px;">🎯 完美匹配：${topDomain} + ${secondDomain}</div>`;
+    } else if (isTopThirdCombo) {
+      comboTag = `<div style="color: var(--accent); font-size: 12px; margin-bottom: 6px;">🎯 完美匹配：${topDomain} + ${thirdDomain}</div>`;
+    } else if (classInfo.data.primary === topDomain) {
+      comboTag = `<div style="color: rgba(99,102,241,0.8); font-size: 12px; margin-bottom: 6px;">⭐ 主要领域匹配：${topDomain}</div>`;
+    }
+    
     card.innerHTML = `
+      ${comboTag}
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <strong style="${classInfo.data.primary === bestDomain ? 'color:var(--accent)' : ''}">${classInfo.name}</strong>
+        <strong style="${(isTopSecondCombo || isTopThirdCombo) ? 'color:var(--accent)' : (classInfo.data.primary === topDomain ? 'color:rgba(99,102,241,0.9)' : '')}">${classInfo.name}</strong>
       </div>
       <div style="margin-top:8px;color:rgba(255,255,255,0.85)">${classInfo.data.description}</div>
       <div style="margin-top:8px">
